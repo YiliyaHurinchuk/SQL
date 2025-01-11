@@ -1,0 +1,145 @@
+1.Покажіть середню зарплату співробітників за кожен рік, до 2005 року;
+SELECT YEAR(from_date) AS  report_year, ROUND(AVG(salary),2) FROM salaries
+GROUP BY YEAR(from_date)
+HAVING report_year BETWEEN MIN(YEAR(salaries.from_date)) AND 2005
+ORDER BY report_year ASC;
+
+2.Покажіть середню зарплату співробітників по кожному відділу. 
+Примітка: потрібно розрахувати по поточній зарплаті, та поточному відділу співробітників;
+SELECT dept_no, ROUND((AVG(salary)),2) AS sum FROM salaries
+JOIN dept_emp ON salaries.emp_no=dept_emp.emp_no
+WHERE salaries.to_date>curdate()
+AND dept_emp.to_date>curdate()
+GROUP BY dept_no
+ORDER BY dept_no ASC;
+
+
+3.Покажіть середню зарплату співробітників по кожному відділу за кожний рік;
+SELECT dept_no, YEAR(salaries.from_date)  AS reporting_period, ROUND((AVG(salary)),2) AS sum FROM  salaries
+JOIN dept_emp ON salaries.emp_no=dept_emp.emp_no
+JOIN employees ON dept_emp.emp_no=employees.emp_no
+GROUP BY dept_no,reporting_period
+ORDER BY dept_no;
+
+4. Покажіть відділи в яких зараз працює більше 15000 співробітників.;
+SELECT dept_no FROM dept_emp
+WHERE to_date>curdate()
+GROUP BY dept_no
+HAVING count(emp_no)> 15000;
+
+5. Для менеджера який працює найдовше покажіть його номер, відділ, дату прийому на роботу, прізвище;
+SELECT employees.emp_no, first_name,min(hire_date), dept_no FROM employees
+JOIN dept_manager ON employees.emp_no=dept_manager.emp_no
+WHERE dept_manager.to_date>curdate()
+GROUP BY  employees.emp_no, first_name,dept_no 
+ORDER BY min(hire_date) ASC
+LIMIT 1;
+
+6.Покажіть топ-10 діючих співробітників компанії з найбільшою
+ різницею між їх зарплатою і середньою зарплатою в їх відділі;
+WITH worker AS (SELECT emp_no, dept_no FROM dept_emp WHERE to_date>curdate()),
+ avg_sal  AS (SELECT dept_no, AVG(salary) AS a_s  FROM salaries
+               JOIN dept_emp ON salaries.emp_no=dept_emp.emp_no
+               WHERE salaries.to_date>curdate()
+               GROUP BY dept_no),
+worker_s AS(SELECT emp_no, salary FROM salaries WHERE to_date>curdate())
+SELECT worker_s.emp_no, worker.dept_no, salary-avg_sal.a_s FROM worker_s
+JOIN worker ON worker_s.emp_no=worker.emp_no
+JOIN avg_sal ON worker.dept_no=avg_sal.dept_no
+WHERE worker_s.salary>avg_sal.a_s
+ORDER BY salary-avg_sal.a_s DESC
+LIMIT 10;
+
+7.Для кожного відділу покажіть другого по порядку менеджера. 
+Необхідно вивести відділ, прізвище ім’я менеджера
+дату прийому на роботу менеджера і дату коли він став менеджером відділу;
+SELECT dept_no, first_name, last_name, hire_date, from_date 
+FROM(SELECT emp_no, from_date, dept_no, ROW_NUMBER() OVER (PARTITION BY dept_no ORDER BY from_date) AS num
+	FROM dept_manager) AS manager
+JOIN employees ON manager.emp_no=employees.emp_no
+WHERE num = 2
+
+Дизайн бази даних:
+
+1. Створіть базу даних для управління курсами. База має включати наступні таблиці:
+
+- students: student_no, teacher_no, course_no, student_name, email, birth_date.
+
+- teachers: teacher_no, teacher_name, phone_no
+
+- courses: course_no, course_name, start_date, end_date
+
+2. Додайте будь-які данні (7-10 рядків) в кожну таблицю.
+
+3. По кожному викладачу покажіть кількість студентів з якими він працював
+
+4. Спеціально зробіть 3 дубляжі в таблиці students (додайте ще 3 однакові рядки) 5. Напишіть запит який виведе дублюючі рядки в таблиці students
+DROP DATABASE IF EXISTS COURSES;
+CREATE DATABASE IF NOT EXISTS COURSES;
+USE COURSES;
+CREATE TABLE IF NOT EXISTS courses (course_no INT AUTO_INCREMENT PRIMARY KEY,
+ course_name VARCHAR(150), start_date DATE, end_date DATE);
+ CREATE TABLE IF NOT EXISTS teachers (teacher_no INT AUTO_INCREMENT PRIMARY KEY,
+ teacher_name VARCHAR(150), phone_no VARCHAR(12));
+ CREATE TABLE IF NOT EXISTS students (student_no INT AUTO_INCREMENT PRIMARY KEY,  
+ teacher_no INT, course_no INT, student_name VARCHAR(150), email VARCHAR(20), birth_date DATE, 
+ FOREIGN KEY(teacher_no)  REFERENCES teachers(teacher_no),
+ FOREIGN KEY(course_no) REFERENCES courses(course_no));
+START TRANSACTION;
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course1', CURDATE(), CURDATE()+1);
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course2', CURDATE(), CURDATE()+5);
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course3', CURDATE(), CURDATE()+7);
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course4', CURDATE(), CURDATE()+10);
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course5', CURDATE(), CURDATE()+12);
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course6', CURDATE(), CURDATE()+15);
+INSERT INTO COURSES.courses (course_name, start_date, end_date) 
+VALUES ('course7', CURDATE(), CURDATE()+17);
+INSERT INTO COURSES.teachers ( teacher_name, phone_no) 
+VALUES ('name1', '123456789');
+INSERT INTO COURSES.teachers ( teacher_name, phone_no) 
+VALUES ('name2', '123456788');
+INSERT INTO COURSES.teachers ( teacher_name, phone_no) 
+VALUES ('name3', '123456787');
+INSERT INTO COURSES.teachers  (teacher_name, phone_no) 
+VALUES ('name4', '123456786');
+INSERT INTO COURSES.teachers (teacher_name, phone_no) 
+VALUES ('name5', '123456785');
+INSERT INTO COURSES.teachers (teacher_name, phone_no) 
+VALUES ('name6', '123456784');
+INSERT INTO COURSES.teachers (teacher_name, phone_no) 
+VALUES ('name7', '123456783');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ( '1', '1','Sname1', '12345@gmail.com', '1994-10-03');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ( '1', '1','Sname2', '12346@gmail.com', '1993-09-05');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ('2', '2','Sname3', '12347@gmail.com', '1992-08-04');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ( '3', '3','Sname4', '12348@gmail.com', '1991-07-03');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ( '5', '5','Sname5', '12349@gmail.com', '1991-10-08');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ( '5', '5','Sname6', '12310@gmail.com', '1997-04-12');
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+SELECT teacher_no, course_no, student_name, email, birth_date
+FROM COURSES.students
+LIMIT 3;
+INSERT INTO COURSES.students ( teacher_no, course_no, student_name, email, birth_date) 
+VALUES ('7', '7','Sname7', '12311@gmail.com', '1995-09-11');
+COMMIT;
+SELECT teacher_no, count(student_no) FROM courses.students
+GROUP BY teacher_no;
+
+ WITH emp AS ( SELECT student_name, teacher_no, course_no, email, birth_date, count(*)  FROM courses.students
+ GROUP BY student_name,teacher_no, course_no, email, birth_date
+ HAVING count(*)>1)
+ SELECT * FROM courses.students WHERE student_name IN( SELECT student_name FROM emp)
+ AND email IN( SELECT email FROM emp) AND teacher_no IN( SELECT teacher_no  FROM emp) 
+ AND course_no IN( SELECT course_no FROM emp)
+AND birth_date IN( SELECT birth_date FROM emp);
